@@ -27,7 +27,7 @@ public class MassComponentSaver extends MassObjectSaver {
 
 		MassComponent mass = (MassComponent) c;
 
-		elements.add("<mass>" + mass.getMass() + "</mass>");
+		elements.add("<mass>" + mass.getComponentMass() + "</mass>");
 
 		MassComponentType type = mass.getMassComponentType();
 		elements.add("<masscomponenttype>" + type.name().toLowerCase(Locale.ENGLISH) + "</masscomponenttype>");

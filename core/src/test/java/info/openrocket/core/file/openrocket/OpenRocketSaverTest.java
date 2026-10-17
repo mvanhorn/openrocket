@@ -63,6 +63,7 @@ import info.openrocket.core.rocketcomponent.BodyTube;
 import info.openrocket.core.rocketcomponent.FlightConfiguration;
 import info.openrocket.core.rocketcomponent.FlightConfigurationId;
 import info.openrocket.core.rocketcomponent.InnerTube;
+import info.openrocket.core.rocketcomponent.MassComponent;
 import info.openrocket.core.rocketcomponent.MotorMount;
 import info.openrocket.core.rocketcomponent.Rocket;
 import info.openrocket.core.rocketcomponent.RocketComponent;
@@ -799,6 +800,59 @@ public class OpenRocketSaverTest {
 		// would fail with the old DEFAULT_DECIMAL_PLACES=3 which stores only "0.012".
 		assertEquals(precisionValue, times.get(0), 1e-6,
 				"Time value lost precision in .ork round-trip — check STORAGE_DECIMAL_PLACES");
+	}
+
+	@Test
+	public void testMassComponentOverridePreservesComponentMass() {
+		Rocket rocket = new Rocket();
+		AxialStage stage = new AxialStage();
+		rocket.addChild(stage);
+		BodyTube tube = new BodyTube(0.3, 0.025, 0.002);
+		stage.addChild(tube);
+
+		MassComponent overridden = new MassComponent();
+		overridden.setName("overridden");
+		overridden.setComponentMass(0.05);
+		overridden.setOverrideMass(0.2);
+		overridden.setMassOverridden(true);
+		tube.addChild(overridden);
+
+		MassComponent plain = new MassComponent();
+		plain.setName("plain");
+		plain.setComponentMass(0.05);
+		tube.addChild(plain);
+
+		rocket.enableEvents();
+		OpenRocketDocument doc = OpenRocketDocumentFactory.createDocumentFromRocket(rocket);
+		File file = saveRocketAsZip(doc, new StorageOptions());
+		OpenRocketDocument loaded = loadRocket(file.getPath());
+
+		MassComponent loadedOverride = null;
+		MassComponent loadedPlain = null;
+		for (Iterator<RocketComponent> it = loaded.getRocket().iterator(true); it.hasNext();) {
+			RocketComponent component = it.next();
+			if (component instanceof MassComponent mass) {
+				if ("overridden".equals(mass.getName())) {
+					loadedOverride = mass;
+				} else if ("plain".equals(mass.getName())) {
+					loadedPlain = mass;
+				}
+			}
+		}
+		assertNotNull(loadedOverride);
+		assertNotNull(loadedPlain);
+
+		assertEquals(0.05, loadedOverride.getComponentMass(), 0.0);
+		assertEquals(0.2, loadedOverride.getOverrideMass(), 0.0);
+		assertTrue(loadedOverride.isMassOverridden());
+		assertEquals(0.2, loadedOverride.getMass(), 0.0);
+
+		loadedOverride.setMassOverridden(false);
+		assertEquals(0.05, loadedOverride.getMass(), 0.0);
+
+		assertEquals(0.05, loadedPlain.getComponentMass(), 0.0);
+		assertFalse(loadedPlain.isMassOverridden());
+		assertEquals(0.05, loadedPlain.getMass(), 0.0);
 	}
 
 	////////////////////////////////
